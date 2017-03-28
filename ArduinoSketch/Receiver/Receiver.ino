@@ -63,5 +63,6 @@ void TC5_Handler (void) {
     //read data from the RF module, write it to the DAC pin
     analogWrite(AUDIO_OUT, (uint8_t) radio.receiveStreamByte());
   }
+  TC5->COUNT16.INTFLAG.bit.MC0 = 1; //don't change this, it's part of the timer code
 }
 
