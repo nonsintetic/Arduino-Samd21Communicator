@@ -143,6 +143,7 @@ void storeAudioSample(uint8_t adcSample) {
     buffer_ready[buffer_index] = true;
     buffer_index = (buffer_index + 1) % NUM_BUFFERS;
     // If the next buffer is still still full, we have an overrun
+    //if (buffer_ready[buffer_index]) Serial.println("AUDIO: Buffer Overrun");
   }
 }
 
