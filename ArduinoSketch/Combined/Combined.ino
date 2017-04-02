@@ -75,16 +75,17 @@ void setup() {
   pinMode(AUDIO_OUT, OUTPUT);
   pinMode(PUSH_TO_TALK, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
   analogWriteResolution(8);   //we're only using 8bit audio so we don't need more
 
   //initialize the ADC, it will be used to read the audio data
   initADC(AUDIO_IN);
 
   //initialize radio module
-  if (!radio.init()) Serial.println("init failed");
-  if (!radio.setFrequency(FREQUENCY)) Serial.println("setFrequency failed"); //CHANGE THIS to your frequency
+  if (!radio.init()) Serial.println("RFM69 - init failed");
+  if (!radio.setFrequency(FREQUENCY)) Serial.println("RFM69 - setFrequency failed"); //CHANGE THIS to your frequency
   //radio.setModemConfig(RH_RF69::GFSK_Rb250Fd250); ///< GFSK, Whitening, Rb = 250kbs,  Fd = 250kHz
-  radio.setTxPower(15); //For RFM69HW and RFM69HCW transmit power is between 14 and 20
+  radio.setTxPower(20); //For RFM69HW and RFM69HCW transmit power is between 14 and 20
   radio.setSyncWords(syncwords, sizeof(syncwords)); //set the network/channel, read above 'syncwords' declaration for more info
   
   //Start an interrupt timer that will call TC5_handler over and over at <sampleRate>Hz
@@ -96,12 +97,14 @@ void loop() {
   mls = millis();
   handleButtons();
   if(machineState == STATE_RX) {
+    *clrPin = PinMASK;
     if (radio.available()) {
       buffer_length = sizeof(buffer);
       radio.recv(buffer, &buffer_length);
       buffer_play_index = 0; // Trigger the interrupt playing of this buffer from the start
     }
   } else if( machineState == STATE_TX ) {
+    *setPin = PinMASK;
     transmitAudioPacket(); //if we have enough data send it to the other radios
   }
 }
@@ -140,7 +143,6 @@ void storeAudioSample(uint8_t adcSample) {
     buffer_ready[buffer_index] = true;
     buffer_index = (buffer_index + 1) % NUM_BUFFERS;
     // If the next buffer is still still full, we have an overrun
-    if (buffer_ready[buffer_index]) Serial.println("Overrun");
   }
 }
 
@@ -177,22 +179,22 @@ void handleButtons() {
 //action for pressing the PUSH TO TALK button
 //TODO: add sound fx
 void buttonTxAction() {
-  Serial.println("TXBTN");
+  Serial.println("Pressed TX button");
   if(machineState == STATE_RX) {
-    Serial.println("STATE TX");
+    Serial.println("STATE: Sending Audio");
     cleanBuffers();
     //machineState = STATE_TX;
     machineState = STATE_SFX; //play the sound
     machineStateNext = STATE_TX; //then go to Tx mode (the sound player checks this when it's done)
   } else {
-    Serial.println("STATE RX");
+    Serial.println("STATE: Listening for audio");
     machineState = STATE_RX;
   }
-  
 }
 
 //each time it runs it writes an audio sample from an audio file array to the DAC
 void playSound() {
+  if(sfxPosition == 0) { Serial.println("CHIRP!"); } 
   if(sfxPosition < tngChirpLength){               //if we're not done playing the sound
     sfxPosition++;                                //keep track of which sample we're on
     analogWrite(AUDIO_OUT,tngChirp[sfxPosition]); //write the sample to the DAC
