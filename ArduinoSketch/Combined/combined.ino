@@ -48,8 +48,8 @@ uint16_t buffer_play_index = 0;
 #define STATE_RX    0
 #define STATE_TX    1
 #define STATE_SFX   2 //playing a sound effect
-uint8_t machineState = 0;
-uint8_t machineStateNext = 0;
+uint8_t machineState = STATE_SFX; //this is so it plays the sound once when you start it up (so you know audio is working)
+uint8_t machineStateNext = STATE_RX;
 //SFX variables
 unsigned int sfxPosition = 0; //position within a sound-effect, for tracking which sample we're on
 
