@@ -2,10 +2,11 @@
 #include <RH_RF69.h>
 #include "adc.h"
 #include "timer.h"
+#include "tng_chirp.h"
 
 //---------- SETTINGS - CHANGE THESE -----------
 #define AUDIO_IN A5     //MICROMPHONE in pin - for best results use an pre-amplified microphone, either with set gain (best) or with auto gain control (you'll get a lot of noise when it's silent)
-#define PUSH_TO_TALK 10 // a button connected between a digital pin (defined here as D10) and GND
+#define PUSH_TO_TALK 10 //Push to talk key, you push it.. then talk :)
 #define RFM69_CS      5 // --> NSS on the RF module
 #define RFM69_IRQ     6 // --> DIO0 on the RF module
 #define RFM69_RST     9 // --> RST on the RF module
@@ -16,7 +17,7 @@
 //#define FREQUENCY 915.0 //890-1020 for the 915MHz module
 //------------ SETTINGS - OPTIONAL -------------
 uint8_t syncwords[] = { 0x2d, 0x64 }; //this set of two bytes identifies a network (channel), they can be any 2 byte values, but they have to be identical on sender and receiver, or they won't hear eachother
-#define SAMPLE_RATE 15000     //at how many Hz the audio from the analog pin will be sampled
+#define SAMPLE_RATE 11025     //at how many Hz the audio from the analog pin will be sampled
 #define NUM_BUFFERS 2         //how many buffers we're using to store the audio samples (we need a buffer in case transmission is unreliable)
 #define USE_SQUELCH 0         //this is like squelch on a walkie-talkie (or voice detection in TeamSpeak), if the audio is lower than SQUELCH_THRESHOLD then we don't transmit at all. Set this to 1 to enable
 #define SQUELCH_THRESHOLD 30  //the audio level under which we don't send (compares to a value from the ADC, so it's from 0-255)
@@ -47,8 +48,10 @@ uint16_t buffer_play_index = 0;
 #define STATE_RX    0
 #define STATE_TX    1
 #define STATE_SFX   2 //playing a sound effect
-
 uint8_t machineState = 0;
+uint8_t machineStateNext = 0;
+//SFX variables
+unsigned int sfxPosition = 0; //position within a sound-effect, for tracking which sample we're on
 
 //button and interaction vars
 unsigned long btnTxTimer = 0;
@@ -151,6 +154,8 @@ void TC5_Handler (void) {
     if (buffer_play_index < buffer_length) {
       analogWrite(AUDIO_OUT,buffer[buffer_play_index++]);
     }
+  } else if( machineState == STATE_SFX) {
+    playSound();
   }
   
   //don't change the following line
@@ -176,12 +181,26 @@ void buttonTxAction() {
   if(machineState == STATE_RX) {
     Serial.println("STATE TX");
     cleanBuffers();
-    machineState = STATE_TX;
+    //machineState = STATE_TX;
+    machineState = STATE_SFX; //play the sound
+    machineStateNext = STATE_TX; //then go to Tx mode (the sound player checks this when it's done)
   } else {
     Serial.println("STATE RX");
     machineState = STATE_RX;
   }
   
+}
+
+//each time it runs it writes an audio sample from an audio file array to the DAC
+void playSound() {
+  if(sfxPosition < tngChirpLength){               //if we're not done playing the sound
+    sfxPosition++;                                //keep track of which sample we're on
+    analogWrite(AUDIO_OUT,tngChirp[sfxPosition]); //write the sample to the DAC
+  } else {                                        //if we're at the end of the sound
+    sfxPosition = 0;
+    machineState = machineStateNext;              //go to the next state
+    machineStateNext = 0;                         //reset the next state
+  }
 }
 
 //reset audio buffers before sending to avoid clicks
