@@ -10,6 +10,9 @@ This project uses an ATSAM D21 processor like is found in the Feather M0 from Ad
 - found a way to read the ADC pin fast enough to achieve the required 12.5kHz sampling frequency (analogRead() achieves a max of around 400Hz sampling speed, way too low)
 - found a way to set up a timed interrupt at the required sampling frequency on the SAMD21 (the original version uses a Teensy specific library for that)
 
+# Unresolved Issues
+- reading the audio packets from the RFM69 is interrupting playback on the ADC resulting in choppy audio ( I think ), a faster way of transfering the packets to and from the buffer would probably fix it (like DMA).
+
 # Hardware
 I use a Feather M0 proto (any samd21 board should work), an electet microphone with a MAX981-based auto-gain board (manual gain would be better imho) and a RFM69HW module (RFM69HCW should be identical asides from pinout). For the audio output I use a separate PAM8403 module and an 8ohm speaker, but you can use any means of audio amplification you prefer.
 
